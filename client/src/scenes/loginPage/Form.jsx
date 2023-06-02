@@ -19,19 +19,13 @@ const registerSchema = yup.object().shape({
   lastName: yup.string().required("required"),
   email: yup.string().email("invalid email").required("required"),
   password: yup.string().required("required"),
-  picture: yup.string(),
-  mobileNo: yup.string(),
-  insta_id: yup.string(),
-  commited: yup.bool(),
+  type: yup.string().required("required")
 });
 
 const loginSchema = yup.object().shape({
   email: yup.string().email("invalid email").required("required"),
   password: yup.string().required("required"),
-});
-
-const otpSchema = yup.object().shape({
-  otp: yup.string().required("required")
+  type: yup.string().required("required")
 });
 
 const initialValuesRegister = {
@@ -39,19 +33,13 @@ const initialValuesRegister = {
   lastName: "",
   email: "",
   password: "",
-  picture: "",
-  mobileNo: "",
-  insta_id: "",
-  commited: true
+  type: ""
 };
 
 const initialValuesLogin = {
   email: "",
   password: "",
-};
-
-const initialValuesOTP = {
-  otp: ""
+  type: ""
 };
 
 const Form = () => {
@@ -66,9 +54,6 @@ const Form = () => {
   const [loading,setIsLoading] = useState(false);
   const [valid,setValid] = useState(false);
   const [registerButtonMessage,setRegisterButtonMessage] = useState("");
-  const [otp,setOTP] = useState("");
-  const [userId,setUserId] = useState("");
-  const [incorrectOTP,setIncorrectOTP] = useState(false);
 
   const register = async (values, onSubmitProps) => {
     if(!valid) {
@@ -81,49 +66,27 @@ const Form = () => {
     for (let value in values) {
       formData.append(value, values[value].trim());
     }
-    if(values.picture) {
-        formData.append("picturePath", values.picture);
-    }
-    if(!values.picture) formData.append("picturePath", "");
-    if(!values.mobileNo) formData.append("mobileNo", "");
-    if(!values.insta_id) formData.append("insta_id", "");
     const savedUserResponse = await fetch(
-      "https://smatching.onrender.com/auth/register",
+      "http://localhost:3001/auth/register",
       {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
       }
     );
     const res = await savedUserResponse.json();
     if(res._id) {
-        setUserId(res._id);
-        const checkOtp = await fetch(
-          "https://smatching.onrender.com/auth/otpverify",{
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values)
-          }
-        );
-        const res2 = await checkOtp.json();
-        setOTP(res2.otp);
         onSubmitProps.resetForm();
-        if (savedUserResponse.status==200) {
-          setIsLoading(false);
-          setPageType("login");
-        } 
-        else {
-          setIsLoading(false);
-          setRegisterButtonMessage(res.message);
-        }
+        navigate('/home')
     } else {
           setIsLoading(false);
-          setRegisterButtonMessage("User with one of unique entries already exsists");
+          setRegisterButtonMessage(res.message);
     }
   };
 
   const login = async (values, onSubmitProps) => {
     setIsLoading(true);
-    const loggedInResponse = await fetch("https://smatching.onrender.com/auth/login", {
+    const loggedInResponse = await fetch("http://localhost:3001/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
@@ -145,123 +108,10 @@ const Form = () => {
     }
   };
 
-  const verifyUser = async () => {
-    try {
-      const response = await fetch(
-        `https://smatching.onrender.com/auth/${userId}/verifyUser`,{
-          method: "POST",
-        }
-      );
-      const res = await response.json();
-      if(res) {
-        setPageType("login");
-        setOTP("")
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  }
-
   const handleFormSubmit = async (values, onSubmitProps) => {
     if (isLogin)  login(values, onSubmitProps);
     else register(values, onSubmitProps);
   };
-
-  const handleOTPSubmit = async (values, onSubmitProps) => {
-    if(Number(values.otp)==Number(otp)) {
-      verifyUser();
-    } else {
-      setIncorrectOTP(true);
-    }
-  }
-
-  if(otp) {
-    return (
-      <>
-      
-      <Formik
-        onSubmit={handleOTPSubmit}
-        initialValues={initialValuesOTP}
-        validationSchema={otpSchema}
-      >
-        {({
-          values,
-          errors,
-          touched,
-          handleBlur,
-          handleChange,
-          handleSubmit,
-          resetForm,
-        }) => (
-          <form onSubmit={handleSubmit}>
-          
-              <Box gap="30px"/>
-            <Box
-              display="grid"
-              gap="30px"
-              gridTemplateColumns="repeat(4, minmax(0, 1fr))"
-              sx={{
-                "& > div": { gridColumn: isNonMobile ? undefined : "span 4" },
-              }}
-            >
-              <TextField
-                label="OTP"
-                type="text"
-                onBlur={handleBlur}
-                onChange={handleChange}
-                value={values.otp}
-                name="otp"
-                error={Boolean(touched.otp) && Boolean(errors.otp)}
-                helperText={touched.otp && errors.otp}
-                sx={{ gridColumn: "span 4" }}
-              />
-            </Box>
-            <Box>
-              <Button
-                  fullWidth
-                  type="submit"
-                  sx={{
-                    m: "2rem 0",
-                    p: "1rem",
-                    backgroundColor: palette.primary.main,
-                    color: palette.background.alt,
-                    "&:hover": { color: palette.primary.main },
-                  }}
-                >
-                  {incorrectOTP?"INCORRECT OTP":"ENTER OTP"}
-                </Button>
-                <Typography
-                onClick={() => {
-                  setPageType("register");
-                  setOTP("");
-                  resetForm();
-                }}
-                sx={{
-                  textDecoration: "underline",
-                  color: palette.primary.main,
-                  "&:hover": {
-                    cursor: "pointer",
-                    color: palette.primary.light,
-                  },
-                }}
-              >
-                Wrong Email? Try Again.
-              </Typography>
-              <Typography
-                sx={{
-                  color: palette.primary.main,
-                }}
-              >
-                Check Spam Folder Also
-              </Typography>
-            </Box>
-          </form>
-        )}
-      </Formik>
-      </>
-    );
-  }
-
   return (
     <>
     <Formik
@@ -311,61 +161,6 @@ const Form = () => {
                   helperText={touched.lastName && errors.lastName}
                   sx={{ gridColumn: "span 2" }}
                 />
-                <TextField
-                  label="Instagram Id"
-                  onBlur={handleBlur}
-                  onChange={handleChange}
-                  value={values.insta_id}
-                  name="insta_id"
-                  error={Boolean(touched.insta_id) && Boolean(errors.insta_id)}
-                  helperText={touched.insta_id && errors.insta_id}
-                  sx={{ gridColumn: "span 4" }}
-                />
-                <TextField
-                  label="Mobile Number"
-                  onBlur={handleBlur}
-                  onChange={handleChange}
-                  value={values.mobileNo}
-                  name="mobileNo"
-                  error={
-                    Boolean(touched.mobileNo) && Boolean(errors.mobileNo)
-                  }
-                  helperText={touched.mobileNo && errors.mobileNo}
-                  sx={{ gridColumn: "span 4" }}
-                />
-                {/* <Box
-                  gridColumn="span 4"
-                  border={`1px solid ${palette.neutral.medium}`}
-                  borderRadius="5px"
-                  p="1rem"
-                >
-                  <Dropzone
-                    acceptedFiles=".jpg,.jpeg,.png"
-                    multiple={false}
-                    onDrop={(acceptedFiles) =>
-                      setFieldValue("picture", acceptedFiles[0])
-                    }
-                  >
-                    {({ getRootProps, getInputProps }) => (
-                      <Box
-                        {...getRootProps()}
-                        border={`2px dashed ${palette.primary.main}`}
-                        p="1rem"
-                        sx={{ "&:hover": { cursor: "pointer" } }}
-                      >
-                        <input {...getInputProps()} />
-                        {!values.picture ? (
-                          <p>Add Picture Here</p>
-                        ) : (
-                          <FlexBetween>
-                            <Typography>{values.picture.name}</Typography>
-                            <EditOutlinedIcon />
-                          </FlexBetween>
-                        )}
-                      </Box>
-                    )}
-                  </Dropzone>
-                </Box> */}
               </>
             )}
 
@@ -390,6 +185,16 @@ const Form = () => {
               helperText={touched.password && errors.password}
               sx={{ gridColumn: "span 4" }}
             />
+            <TextField
+              label="User Type (User/Admin/Super Admin)"
+              onBlur={handleBlur}
+              onChange={handleChange}
+              value={values.type}
+              name="type"
+              error={Boolean(touched.type) && Boolean(errors.type)}
+              helperText={touched.type && errors.type}
+              sx={{ gridColumn: "span 4" }}
+            />
             {!isLogin&&<PasswordChecklist
 				    rules={["minLength","number","capital"]}
 				    minLength={5}
@@ -400,8 +205,6 @@ const Form = () => {
 			      />}
             
           </Box>
-
-          {/* BUTTONS */}
           <Box>
           {(invalidCrendentials&&isLogin)?<Button
               fullWidth
@@ -447,19 +250,6 @@ const Form = () => {
                 ? "Don't have an account? Sign Up here."
                 : "Already have an account? Login here."}
             </Typography>
-            {isLogin&&<Typography
-              onClick={() => navigate(`/reset`)}
-              sx={{
-                textDecoration: "underline",
-                color: palette.primary.main,
-                "&:hover": {
-                  cursor: "pointer",
-                  color: palette.primary.light,
-                },
-              }}
-            >
-              Forgot Password.
-            </Typography>}
           </Box>
         </form>
       )}
